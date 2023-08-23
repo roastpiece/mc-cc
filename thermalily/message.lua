@@ -1,0 +1,4 @@
+ACTION = {
+    PLACE_LAVA = 1,
+    REPLACE_FLOWERS = 2
+}
