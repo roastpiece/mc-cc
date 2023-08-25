@@ -4,13 +4,10 @@
 
 -- while idle, refuel, get new flowers, dump old flowers
 
-local move                = require("move-turtle")
+local move = require("move-turtle")
+require("config")
 
 local NBT_0_COOLDOWN_HASH = "43372382d5ee1774a14712b3c5e67db8"
-local HOME_POS            = { x = -148, y = 5, z = 91, o = ORIENTATION.NORTH }
-local DUMP_POS            = { x = -149, z = 91 }
-local BUCKETS_POS         = { x = -147, z = 91 }
-local FLOWERS_POS         = { x = -148, z = 92 }
 
 
 local function findNewFlowersInInventory()
@@ -137,6 +134,16 @@ function ReplaceAllFlowers()
     move.Back()
     move.Left()
     PlaceLava(3)
+
+    move.Right()
+    move.Forward()
+    for _ = 1, 2 do
+        move.Forward()
+        ReplaceFlower()
+    end
+    move.Back()
+    move.Left()
+    PlaceLava(2)
 end
 
 function main()

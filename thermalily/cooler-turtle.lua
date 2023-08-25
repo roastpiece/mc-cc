@@ -1,6 +1,5 @@
 local move = require("move-turtle")
 require("com")
-local inspect             = require("inspect")
 local LuaSerializer       = LuaSerializer or require("LuaSerializer")
 
 --- get coords of done flowers, collect them
