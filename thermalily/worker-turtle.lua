@@ -5,7 +5,7 @@
 -- while idle, refuel, get new flowers, dump old flowers
 
 local move = require("move-turtle")
-require("config")
+require("config-worker")
 
 local NBT_0_COOLDOWN_HASH = "43372382d5ee1774a14712b3c5e67db8"
 

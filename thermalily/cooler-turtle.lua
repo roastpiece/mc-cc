@@ -1,14 +1,11 @@
 local move = require("move-turtle")
 require("com")
-local LuaSerializer       = LuaSerializer or require("LuaSerializer")
+local LuaSerializer = LuaSerializer or require("LuaSerializer")
+require("config-cooler")
 
 --- get coords of done flowers, collect them
 
 local NBT_0_COOLDOWN_HASH = "43372382d5ee1774a14712b3c5e67db8"
-
-local HOME_POS            = { x = -150, y = 5, z = 96, o = ORIENTATION.SOUTH }
-local DUMP_POS            = { x = -149, z = 96 }
-local FLOWERS_POS         = { x = -150, z = 96 }
 
 local workQueue           = {}
 local currentWork
@@ -68,6 +65,18 @@ local function findNewFlowersInInventory()
         end
     end
     return -1
+end
+
+local function countFlowersOnCooldownInInventory()
+    local flowersInInventory = 0
+    for i = 1, 16 do
+        local item = turtle.getItemDetail(i, true)
+        if item ~= nil and item.name == "botania:floating_thermalily" and item.nbt ~= nil and item.nbt ~= NBT_0_COOLDOWN_HASH then
+            flowersInInventory = flowersInInventory + item.count
+        end
+    end
+
+    return flowersInInventory
 end
 
 local function MoveTo(pos)
@@ -172,7 +181,8 @@ local function listenForMessage()
                 action = WORK_ACTIONS.HARVEST,
                 position = tableFind(plantablePositions, function(val)
                     return comparePositions(val, message.position)
-                end)
+                end),
+                age = 0
             }
             if tableFind(workQueue, function(val)
                     return compareWorkHarvest(val, newWork)
@@ -186,7 +196,8 @@ local function listenForMessage()
                 end) == nil and (not comparePositions(currentCalibration, message.position)) then
                 table.insert(calibrationQueue, {
                     action = WORK_ACTIONS.CALIBRATE,
-                    position = message.position
+                    position = message.position,
+                    age = 0
                 })
 
                 print("calibration: ", message.position.x, ",", message.position.z)
@@ -198,38 +209,64 @@ end
 local function scheduleChores()
     while true do
         table.insert(workQueue, {
-            action = WORK_ACTIONS.GET_FLOWERS
+            action = WORK_ACTIONS.GET_FLOWERS,
+            age = 0
         })
-        table.insert(workQueue, {
-            action = WORK_ACTIONS.DUMP
-        })
-        os.sleep(10)
+        if findNewFlowersInInventory() ~= -1 then
+            table.insert(workQueue, {
+                action = WORK_ACTIONS.DUMP,
+                age = 0
+            })
+        end
+        os.sleep(15)
     end
+end
+
+local function sortByDistance(posA, posB)
+    local a_distance = math.abs(posA.x - move.transform.x) +
+        math.abs(posA.z - move.transform.z)
+    local b_distance = math.abs(posB.x - move.transform.x) +
+        math.abs(posB.z - move.transform.z)
+    return a_distance < b_distance
 end
 
 local function schedulePlanting()
     while true do
-        for i = 1, 6 do
-            local position = tableFind(plantablePositions, function(val)
-                return val.state == POSITION_STATE.FREE
-            end)
-            if position ~= nil then
-                position.state = POSITION_STATE.PENDING_PLANT
-                table.insert(workQueue, {
-                    action = WORK_ACTIONS.PLANT,
-                    position = position
-                })
-            end
-        end
+        table.sort(plantablePositions, sortByDistance)
 
-        local freePlots = 0
-        for _, pos in pairs(plantablePositions) do
-            if pos.state == POSITION_STATE.FREE then
-                freePlots = freePlots + 1
+        local nFlowers = countFlowersOnCooldownInInventory()
+        if nFlowers > 0 then
+            for i = 1, nFlowers do
+                local position = tableFind(plantablePositions, function(val)
+                    return val.state == POSITION_STATE.FREE
+                end)
+                if position ~= nil then
+                    position.state = POSITION_STATE.PENDING_PLANT
+                    table.insert(workQueue, {
+                        action = WORK_ACTIONS.PLANT,
+                        position = position,
+                        age = 0
+                    })
+                end
             end
         end
-        print("free plots: ", freePlots)
-        os.sleep(10)
+        os.sleep(1)
+    end
+end
+
+local function sortWorkQueue(a, b)
+    if a.action == WORK_ACTIONS.DUMP and a.age > 5 then
+        return true
+    elseif a.position ~= nil and b.position ~= nil then
+        return sortByDistance(a.position, b.position)
+    else
+        return a.age > b.age
+    end
+end
+
+local function ageWorkQueue()
+    for _, work in pairs(workQueue) do
+        work.age = work.age + 1
     end
 end
 
@@ -240,11 +277,15 @@ local function doWork()
             currentCalibration.action(currentCalibration)
             currentCalibration = nil
         else
-            currentWork = table.remove(workQueue)
+            table.sort(workQueue, sortWorkQueue)
+            currentWork = table.remove(workQueue, 1)
+
             if currentWork ~= nil then
                 currentWork.action(currentWork)
                 currentWork = nil
             end
+
+            ageWorkQueue()
         end
         os.sleep(0)
     end
