@@ -258,7 +258,7 @@ while true do
     if not isReactorStable(ri) then
         initiateShutdown(R)
     end
-    
+
     handleOutputStep(ri)
     updateFieldGate(InputFg, ri)
 
