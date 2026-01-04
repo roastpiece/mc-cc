@@ -1,3 +1,9 @@
 {
-	"Lua.diagnostics.globals": ["peripheral", "turtle", "fs"]
+	"Lua.diagnostics.globals": [
+		"peripheral",
+		"turtle",
+		"fs",
+		"sleep",
+		"parallel"
+	]
 }

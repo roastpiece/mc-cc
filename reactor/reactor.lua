@@ -20,6 +20,10 @@ local reactorSide        = "back"
 local inputFlowGateSide  = "flow_gate_2"
 local outputFlowGateSide = "flow_gate_3"
 
+local notificationReceipients = {
+    "asio_mido"
+}
+
 
 --[[ Configuration End ]]
 
@@ -35,6 +39,8 @@ local function resetLastTemps()
 end
 
 local targetStepP = 0.02
+
+CM = require("chat-manager")
 
 --- @class Reactor
 --- @field getReactorInfo fun(): ReactorInfo
@@ -79,6 +85,10 @@ if not OutputFg then
     error("No output flow gate connected found!")
 end
 
+--- @type ChatBox|nil
+local chatBox = peripheral.find("chat_box")
+local chatManager = CM.new(chatBox, "Reactor Monitor")
+
 --- @class ReactorStatus
 local reactorStatus = {
     status = "unknown",
@@ -94,6 +104,8 @@ end
 local function initiateShutdown(r)
     r.stopReactor()
     print("Reactor shutdown initiated!")
+
+    chatManager:scheduleToast("Reactor shutdown initiated!", "WARNING", notificationReceipients)
     while true do sleep(1) end
 end
 
@@ -237,32 +249,51 @@ local function printStatus(status, ri)
     print(string.format("Net Generation: %f MRF/t", (status.netFlow)/1000/1000))
 end
 
-OutputFg.setFlowOverride(0)
-InputFg.setFlowOverride(InputFg.getSignalLowFlow())
-setOverride(true)
+local function main()
+    OutputFg.setFlowOverride(0)
+    InputFg.setFlowOverride(InputFg.getSignalLowFlow())
+    setOverride(true)
 
-if true then
-    local ri = R.getReactorInfo()
-    if not isReactorWarmedUp(ri) then
-        reactorStatus.status = "warming up"
-        while not isReactorWarmedUp(ri) do
-            sleep(5)
+    if true then
+        local ri = R.getReactorInfo()
+        if not isReactorWarmedUp(ri) then
+            reactorStatus.status = "warming up"
+            while not isReactorWarmedUp(ri) do
+                sleep(5)
+            end
+            reactorStatus.status = "running"
+            OutputFg.setFlowOverride(OutputFg.getSignalHighFlow())
         end
-        reactorStatus.status = "running"
-        OutputFg.setFlowOverride(OutputFg.getSignalHighFlow())
+    end
+
+    while true do
+        local ri = R.getReactorInfo()
+        if not isReactorStable(ri) then
+            initiateShutdown(R)
+        end
+
+        handleOutputStep(ri)
+        updateFieldGate(InputFg, ri)
+
+        updateStatus(ri)
+        printStatus(reactorStatus, ri)
+        sleep(0.1)
     end
 end
 
-while true do
-    local ri = R.getReactorInfo()
-    if not isReactorStable(ri) then
-        initiateShutdown(R)
+local function pmain()
+    while true do
+        local ok, err = pcall(main)
+        if not ok then
+            chatManager:scheduleToast("Reactor Monitor crashed: " .. tostring(err), "CRITICAL", notificationReceipients)
+        end
     end
-
-    handleOutputStep(ri)
-    updateFieldGate(InputFg, ri)
-
-    updateStatus(ri)
-    printStatus(reactorStatus, ri)
-    sleep(0.1)
 end
+
+local function runChatManager()
+    if chatBox then
+        chatManager:worker()
+    end
+end
+
+parallel.waitForAll(pmain, runChatManager)
