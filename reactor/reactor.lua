@@ -289,12 +289,12 @@ local function printStatus(status, ri)
     print(string.format("Remaining Fuel Time: > %.2f hours", status.remainingFuelTicks/20/60/60))
     print(string.format("Field Strength: %.2f%%", (ri.fieldStrength / ri.maxFieldStrength) * 100))
     print(string.format("Temperature: %.2f C", ri.temperature))
-    print(string.format("Target Input Flow: %.2f MRF/t", status.targetInputFlow / 1000/1000))
-    print(string.format("Target Output Flow: %.2f MRF/t", (status.targetOutputFlow / 1000/1000) or 0))
-    print(string.format("Net Generation: %f MRF/t", (status.netFlow)/1000/1000))
-    print(string.format("Drain rate: %f MRF/t", ri.fieldDrainRate/1000/1000))
+    print(string.format("Target Input Flow: %.3f MRF/t", status.targetInputFlow / 1000/1000))
+    print(string.format("Target Output Flow: %.3f MRF/t", (status.targetOutputFlow / 1000/1000) or 0))
+    print(string.format("Net Generation: %.3f MRF/t", (status.netFlow)/1000/1000))
+    print(string.format("Drain rate: %.3f MRF/t", ri.fieldDrainRate/1000/1000))
     local satP = ri.energySaturation / ri.maxEnergySaturation
-    print(string.format("Saturation: %.2f%%", satP))
+    print(string.format("Saturation: %.2f%%", satP * 100))
 end
 
 local function main()
