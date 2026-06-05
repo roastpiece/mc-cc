@@ -257,9 +257,11 @@ end
 ---@param fg FlowGate
 ---@param ri ReactorInfo
 local function updateFieldGate(fg, ri)
+    local satP = ri.energySaturation / ri.maxEnergySaturation
+    local fuelConversionP = ri.fuelConversion / ri.maxFuelConversion
     local targetFactor = 1/((((1/shieldTargetP) * ri.fieldDrainRate - ri.fieldDrainRate) / ri.fieldDrainRate)
                             / ((1/shieldTargetP) * ri.fieldDrainRate / ri.fieldDrainRate))
-    local targetInputFlow = ri.fieldDrainRate * targetFactor
+    local targetInputFlow = ri.fieldDrainRate * targetFactor * (1 / (1 - fuelConversionP))
     reactorStatus.targetInputFlow = targetInputFlow
     
     if dryRun then
