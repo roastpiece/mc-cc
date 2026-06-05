@@ -262,7 +262,7 @@ local function updateFieldGate(fg, ri)
     local fuelConversionP = ri.fuelConversion / ri.maxFuelConversion
     local targetFactor = 1/((((1/shieldTargetP) * ri.fieldDrainRate - ri.fieldDrainRate) / ri.fieldDrainRate)
                             / ((1/shieldTargetP) * ri.fieldDrainRate / ri.fieldDrainRate))
-    local targetInputFlow = ri.fieldDrainRate * targetFactor * (1 / satP)
+    local targetInputFlow = ri.fieldDrainRate * targetFactor -- * (1 / satP)
 
     if shieldP <= shieldStepCutoffP then
         targetInputFlow = targetInputFlow * 2
