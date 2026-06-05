@@ -9,7 +9,7 @@ local fuelConversionMaxP = 0.9
 
 --- Target parameters
 local shieldTargetP = 0.30
-local shieldStepCutoff = 0.25
+local shieldStepCutoffP = 0.25
 local shieldPartialStepStep = 0.05
 local maxTrend = 0.1
 local maxSafeTrend = 5
@@ -184,7 +184,9 @@ local function handleOutputStep(ri)
         return
     end
     
-    if ri.fieldStrength < shieldStepCutoff then
+    local shieldP = ri.fieldStrength / ri.maxFieldStrength
+    
+    if shieldP < shieldStepCutoffP then
         shieldPartialStep = shieldPartialStepStep
         local nextFlowStep = shieldLastTarget + (shieldLastStep * shieldPartialStep)
         OutputFg.setFlowOverride(nextFlowStep)
@@ -192,7 +194,7 @@ local function handleOutputStep(ri)
         return
     end
 
-    if ri.fieldStrength < (shieldTargetP - 0.005) then
+    if shieldP < (shieldTargetP - 0.005) then
         reactorStatus.status = "SCALING: waiting for shield to stabilize"
         return
     end
@@ -238,7 +240,7 @@ local function handleOutputStep(ri)
     shieldLastStep = nextFlowStep - reactorStatus.targetOutputFlow
 
     -- advance the input flow
-    InputFg.setFlowOverride(reactorStatus.targetInputFlow * 1.2)
+    InputFg.setFlowOverride(reactorStatus.targetInputFlow * 2)
     OutputFg.setFlowOverride(nextFlowStep)
     reactorStatus.targetOutputFlow = nextFlowStep
     shieldLastTarget = nextFlowStep
@@ -311,7 +313,7 @@ local function main()
 
         handleOutputStep(ri)
 
-        updateFieldGate(InputFg, ri)
+        --updateFieldGate(InputFg, ri)
 
         updateStatus(ri)
         printStatus(reactorStatus, ri)
