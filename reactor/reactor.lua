@@ -11,11 +11,22 @@ local fuelConversionMaxP = 0.9
 local shieldTargetP = 0.30
 local shieldStepCutoffP = 0.25
 local shieldPartialStepStep = 0.05
-local maxTrend = 0.1
 local maxSafeTrend = 5
 local targetOutputFlow = 20 * 1000 * 1000
 local targetTemp = 7500
 local targetSatP = 0.5
+
+local function maxTrend(temp)
+    if temp < 5000 then
+        return 10
+    elseif temp < 6500 then
+        return 1
+    elseif temp < 7500 then
+        return 0.1
+    else
+        return 0.02
+    end
+end
 
 local dryRun = true
 
@@ -215,7 +226,7 @@ local function handleOutputStep(ri)
     end
 
     local tempTrend = getTempTrend()
-    if tempTrend > maxTrend then
+    if tempTrend > maxTrend(ri.temperature) then
         reactorStatus.status = "SCALING: waiting for temperature to stabilize"
         return
     end
