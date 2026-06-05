@@ -161,7 +161,7 @@ end
 local function getTempTrend()
     local trend = 0
     for i = 2, #lastTemps do
-        trend = trend + (lastTemps[i] - lastTemps[i-1])
+        trend = trend + (lastTemps[i] - lastTemps[i-1]) * ((i-1)/(#lastTemps-1)) * 2
     end
     return trend / (#lastTemps - 1)
 end
