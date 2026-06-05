@@ -8,8 +8,11 @@ local shieldMinP = 0.20
 local fuelConversionMaxP = 0.9
 
 --- Target parameters
-local shieldTargetP = 0.25
+local shieldTargetP = 0.30
+local shieldStepCutoff = 0.25
+local shieldPartialStepStep = 0.05
 local maxTrend = 0.1
+local maxSafeTrend = 5
 local targetOutputFlow = 20 * 1000 * 1000
 local targetTemp = 7500
 local targetSatP = 0.5
@@ -29,6 +32,10 @@ local notificationReceipients = {
 
 local lastTempC = 20
 local lastTemps = {}
+
+local shieldLastTarget = 0
+local shieldLastStep = 0
+local shieldPartialStep = 0
 
 local function resetLastTemps()
     lastTemps = {}
@@ -177,6 +184,19 @@ local function handleOutputStep(ri)
         return
     end
     
+    if ri.fieldStrength < shieldStepCutoff then
+        shieldPartialStep = shieldPartialStepStep
+        local nextFlowStep = shieldLastTarget + (shieldLastStep * shieldPartialStep)
+        OutputFg.setFlowOverride(nextFlowStep)
+        reactorStatus.targetOutputFlow = nextFlowStep
+        return
+    end
+
+    if ri.fieldStrength < (shieldTargetP - 0.005) then
+        reactorStatus.status = "SCALING: waiting for shield to stabilize"
+        return
+    end
+
     updateLastTemps(ri)
     if lastTemps[1] == 0 then
         return
@@ -204,10 +224,25 @@ local function handleOutputStep(ri)
         return
     end
 
+    if shieldPartialStep < 1 then
+        shieldPartialStep = shieldPartialStep + shieldPartialStepStep
+        local nextFlowStep = shieldLastTarget + (shieldLastStep * shieldPartialStep)
+        OutputFg.setFlowOverride(nextFlowStep)
+        reactorStatus.targetOutputFlow = nextFlowStep
+        return
+    end
+    
+    
     local nextFlow = getNextOutputFlowStep(currentFlow, targetOutputFlow)
     local nextFlowStep = math.min(nextFlow, targetOutputFlow)
+    shieldLastStep = nextFlowStep - reactorStatus.targetOutputFlow
+
+    -- advance the input flow
+    InputFg.setFlowOverride(reactorStatus.targetInputFlow * 1.2)
     OutputFg.setFlowOverride(nextFlowStep)
     reactorStatus.targetOutputFlow = nextFlowStep
+    shieldLastTarget = nextFlowStep
+    shieldPartialStep = 1
     if nextFlowStep < currentFlow then
         reactorStatus.status = "SCALING DOWN: adjusting output flow to need"
     else
@@ -272,7 +307,10 @@ local function main()
             initiateShutdown(R)
         end
 
+        updateFieldGate(InputFg, ri)
+
         handleOutputStep(ri)
+
         updateFieldGate(InputFg, ri)
 
         updateStatus(ri)
